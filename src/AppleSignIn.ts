@@ -6,7 +6,7 @@ import querystring from "querystring";
 
 import jwt from "jsonwebtoken";
 import createJwksClient, { JwksClient, SigningKey } from "jwks-rsa";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 export interface AppleSignInOptions {
   /**
@@ -266,13 +266,15 @@ export class AppleSignIn {
       });
       results = response.data as AccessTokenResponse;
     } catch (err) {
-      const statusCode = err?.response?.status;
-      const reason = err?.response?.data?.error;
-      if (reason) {
-        throw new Error(`Authorization request failed with reason "${reason}" and status code "${statusCode}"`);
-      } else {
-        throw new Error(`Authorization request failed with unknown reason and status code "${statusCode}"`);
-      }
+      if (err instanceof AxiosError) {
+        const statusCode = err?.response?.status;
+        const reason = err?.response?.data?.error;
+        if (reason) {
+          throw new Error(`Authorization request failed with reason "${reason}" and status code "${statusCode}"`);
+        } else {
+          throw new Error(`Authorization request failed with unknown reason and status code "${statusCode}"`);
+        }
+      } else { throw err; }
     }
 
     return results;
@@ -304,13 +306,15 @@ export class AppleSignIn {
       });
       results = response.data as RefreshTokenResponse;
     } catch (err) {
-      const statusCode = err?.response?.status;
-      const reason = err?.response?.data?.error;
-      if (reason) {
-        throw new Error(`Authorization request failed with reason "${reason}" and status code "${statusCode}"`);
-      } else {
-        throw new Error(`Authorization request failed with unknown reason and status code "${statusCode}"`);
-      }
+      if (err instanceof AxiosError) {
+        const statusCode = err?.response?.status;
+        const reason = err?.response?.data?.error;
+        if (reason) {
+          throw new Error(`Authorization request failed with reason "${reason}" and status code "${statusCode}"`);
+        } else {
+          throw new Error(`Authorization request failed with unknown reason and status code "${statusCode}"`);
+        }
+      } else { throw err; }
     }
 
     return results;
@@ -358,7 +362,9 @@ export class AppleSignIn {
         if (err) {
           reject(err);
         } else {
-          resolve(key);
+          if (key === undefined) {
+            reject("key is undefined") 
+          } else { resolve(key); }
         }
       });
     });
@@ -413,11 +419,11 @@ export class AppleSignIn {
     const jwtClaims = jwt.verify(idToken, key.getPublicKey(), {
       issuer: "https://appleid.apple.com",
       audience: this.clientId,
-      algorithms: [alg],
+      algorithms: [alg as jwt.Algorithm],
       nonce: options?.nonce,
       ignoreExpiration: options?.ignoreExpiration,
       subject: options?.subject,
-    }) as AppleIdTokenType;
+    }) as unknown as AppleIdTokenType;
 
     // TODO: possibly implementation of this, as currently the last character is missmatching
     // https://sarunw.com/posts/sign-in-with-apple-4/#authorization-code-(code)-validation
